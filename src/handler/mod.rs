@@ -16,6 +16,7 @@ use hyper::{Request, Response};
 use futures::{future, Future};
 
 use state::{State, set_request_id, request_id};
+use state::client_addr::put_client_addr;
 use http::request::path::RequestPathSegments;
 use http::header::XRuntimeMicroseconds;
 
@@ -149,9 +150,14 @@ where
 
     fn call(&self, req: Self::Request) -> Self::Future {
         let s = chrono::UTC::now();
+        let mut state = State::new();
+
+        if let Some(addr) = req.remote_addr() {
+            put_client_addr(&mut state, addr);
+        }
+
         let (method, uri, version, headers, body) = req.deconstruct();
 
-        let mut state = State::new();
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
